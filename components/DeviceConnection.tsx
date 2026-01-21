@@ -14,6 +14,7 @@ export default function DeviceConnection({ serial, onConnect, onDisconnect }: De
   const [isConnected, setIsConnected] = useState(false);
   const [portInfo, setPortInfo] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const handleConnect = async () => {
     if (typeof window === 'undefined' || !('serial' in navigator)) {
@@ -35,13 +36,25 @@ export default function DeviceConnection({ serial, onConnect, onDisconnect }: De
   };
 
   const handleDisconnect = async () => {
+    if (isDisconnecting) {
+      return; // 이미 해제 중이면 무시
+    }
+
+    setIsDisconnecting(true);
     try {
       await serial.disconnect();
       setIsConnected(false);
       setPortInfo('');
       onDisconnect();
     } catch (error: any) {
-      alert(`연결 해제 실패: ${error.message}`);
+      // 에러가 발생해도 상태는 초기화
+      setIsConnected(false);
+      setPortInfo('');
+      onDisconnect();
+      console.error('Disconnect error:', error);
+      // 사용자에게는 조용히 처리 (이미 해제되었을 수 있음)
+    } finally {
+      setIsDisconnecting(false);
     }
   };
 
@@ -65,14 +78,20 @@ export default function DeviceConnection({ serial, onConnect, onDisconnect }: De
         </div>
         <button
           onClick={isConnected ? handleDisconnect : handleConnect}
-          disabled={isConnecting}
+          disabled={isConnecting || isDisconnecting}
           className={`px-6 py-3 rounded-lg font-medium transition-colors ${
             isConnected
               ? 'bg-red-600 hover:bg-red-700 text-white'
               : 'bg-blue-600 hover:bg-blue-700 text-white'
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          {isConnecting ? '연결 중...' : isConnected ? '연결 해제' : '장치 연결'}
+          {isConnecting 
+            ? '연결 중...' 
+            : isDisconnecting 
+            ? '해제 중...' 
+            : isConnected 
+            ? '연결 해제' 
+            : '장치 연결'}
         </button>
       </div>
     </div>

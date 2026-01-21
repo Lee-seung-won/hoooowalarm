@@ -11,6 +11,7 @@ export class SerialConnection {
   private onMessage: ((msg: SerialMessage) => void) | null = null;
   private onGraphData: ((value: number) => void) | null = null;
   private isReading = false;
+  private isDisconnecting = false;
 
   async connect(): Promise<string> {
     if (typeof window === 'undefined' || !('serial' in navigator)) {
@@ -91,22 +92,62 @@ export class SerialConnection {
   }
 
   async disconnect(): Promise<void> {
+    // 이미 해제 중이면 무시
+    if (this.isDisconnecting) {
+      return;
+    }
+
+    this.isDisconnecting = true;
     this.isReading = false;
     
-    if (this.reader) {
-      await this.reader.cancel();
-      await this.reader.releaseLock();
-      this.reader = null;
-    }
-    
-    if (this.writer) {
-      await this.writer.releaseLock();
-      this.writer = null;
-    }
-    
-    if (this.port) {
-      await this.port.close();
-      this.port = null;
+    try {
+      // Reader 정리
+      if (this.reader) {
+        try {
+          await this.reader.cancel();
+        } catch (error) {
+          // 이미 취소되었거나 에러가 발생해도 계속 진행
+          console.warn('Reader cancel error:', error);
+        }
+        try {
+          await this.reader.releaseLock();
+        } catch (error) {
+          // 이미 해제되었거나 에러가 발생해도 계속 진행
+          console.warn('Reader release error:', error);
+        }
+        this.reader = null;
+      }
+      
+      // Writer 정리
+      if (this.writer) {
+        try {
+          await this.writer.releaseLock();
+        } catch (error) {
+          // 이미 해제되었거나 에러가 발생해도 계속 진행
+          console.warn('Writer release error:', error);
+        }
+        this.writer = null;
+      }
+      
+      // Port 닫기
+      if (this.port) {
+        try {
+          // 포트가 이미 닫혔는지 확인
+          if (this.port.readable !== null || this.port.writable !== null) {
+            await this.port.close();
+          }
+        } catch (error: any) {
+          // "already in progress" 에러는 무시
+          if (error.message && error.message.includes('already in progress')) {
+            console.warn('Port close already in progress');
+          } else {
+            throw error;
+          }
+        }
+        this.port = null;
+      }
+    } finally {
+      this.isDisconnecting = false;
     }
   }
 
@@ -119,6 +160,10 @@ export class SerialConnection {
   }
 
   isConnected(): boolean {
-    return this.port !== null && this.port.readable !== null && this.port.writable !== null;
+    return this.port !== null && !this.isDisconnecting && this.port.readable !== null && this.port.writable !== null;
+  }
+
+  isDisconnecting(): boolean {
+    return this.isDisconnecting;
   }
 }
