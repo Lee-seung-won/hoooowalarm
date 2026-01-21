@@ -163,7 +163,7 @@ export class SerialConnection {
     return this.port !== null && !this.isDisconnecting && this.port.readable !== null && this.port.writable !== null;
   }
 
-  isDisconnecting(): boolean {
+  getIsDisconnecting(): boolean {
     return this.isDisconnecting;
   }
 }
