@@ -18,7 +18,7 @@ export class SerialConnection {
     }
 
     try {
-      this.port = await (navigator as any).serial.requestPort();
+      this.port = await navigator.serial.requestPort();
       await this.port.open({ baudRate: 9600 });
       
       this.writer = this.port.writable.getWriter();
@@ -115,6 +115,6 @@ export class SerialConnection {
   }
 
   isConnected(): boolean {
-    return this.port !== null && this.port.readable !== null;
+    return this.port !== null && this.port.readable !== null && this.port.writable !== null;
   }
 }
