@@ -21,6 +21,10 @@ export class SerialConnection {
       this.port = await navigator.serial.requestPort();
       await this.port.open({ baudRate: 9600 });
       
+      if (!this.port.writable || !this.port.readable) {
+        throw new Error('포트의 읽기/쓰기 스트림을 열 수 없습니다.');
+      }
+      
       this.writer = this.port.writable.getWriter();
       this.reader = this.port.readable.getReader();
       

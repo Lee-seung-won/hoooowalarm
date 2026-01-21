@@ -1,7 +1,37 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import dynamic from 'next/dynamic';
+
+// Recharts는 클라이언트 전용이므로 SSR 비활성화
+const LineChart = dynamic(
+  () => import('recharts').then((mod) => mod.LineChart),
+  { ssr: false }
+);
+const Line = dynamic(
+  () => import('recharts').then((mod) => mod.Line),
+  { ssr: false }
+);
+const XAxis = dynamic(
+  () => import('recharts').then((mod) => mod.XAxis),
+  { ssr: false }
+);
+const YAxis = dynamic(
+  () => import('recharts').then((mod) => mod.YAxis),
+  { ssr: false }
+);
+const CartesianGrid = dynamic(
+  () => import('recharts').then((mod) => mod.CartesianGrid),
+  { ssr: false }
+);
+const Tooltip = dynamic(
+  () => import('recharts').then((mod) => mod.Tooltip),
+  { ssr: false }
+);
+const ResponsiveContainer = dynamic(
+  () => import('recharts').then((mod) => mod.ResponsiveContainer),
+  { ssr: false }
+);
 
 interface GraphDataPoint {
   time: string;
@@ -14,11 +44,16 @@ interface RealtimeGraphProps {
 
 export default function RealtimeGraph({ data }: RealtimeGraphProps) {
   const [graphData, setGraphData] = useState<GraphDataPoint[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
   const maxDataPoints = 50;
   const timeRef = useRef(0);
 
   useEffect(() => {
-    if (data !== null) {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (data !== null && isMounted) {
       timeRef.current += 1;
       setGraphData((prev) => {
         const newData = [...prev, { time: `${timeRef.current}`, value: data }];
@@ -28,7 +63,18 @@ export default function RealtimeGraph({ data }: RealtimeGraphProps) {
         return newData;
       });
     }
-  }, [data]);
+  }, [data, isMounted]);
+
+  if (!isMounted) {
+    return (
+      <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">실시간 그래프</h2>
+        <div className="h-64 w-full flex items-center justify-center text-gray-500">
+          차트 로딩 중...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 mb-4">
